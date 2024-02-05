@@ -24,19 +24,19 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
     // Info of each pool.
     struct PoolInfo {
         IBoringERC20 lpToken; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. Alb to distribute per block.
+        uint256 allocPoint; // How many allocation points assigned to this pool. Based to distribute per block.
         uint256 lastRewardTimestamp; // Last block number that based distribution occurs.
-        uint256 accAlbPerShare; // Accumulated Alb per share, times 1e18. See below.
+        uint256 accBasedPerShare; // Accumulated Based per share, times 1e18. See below.
         uint16 depositFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
         uint256 totalLp; // Total token in Pool
         IComplexRewarder[] rewarders; // Array of rewarder contract for pools with incentives
     }
 
-    IBoringERC20 public alb;
+    IBoringERC20 public based;
 
-    // Alb tokens created per second
-    uint256 public albPerSec;
+    // Based tokens created per second
+    uint256 public basedPerSec;
 
     // Max harvest interval: 14 days
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
@@ -53,14 +53,14 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
 
-    // The timestamp when Alb mining starts.
+    // The timestamp when Based mining starts.
     uint256 public startTimestamp;
 
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
 
-    // Total Alb in Alb Pools (can be multiple pools)
-    uint256 public totalAlbInPools = 0;
+    // Total Based in Based Pools (can be multiple pools)
+    uint256 public totalBasedInPools = 0;
 
     // Team address.
     address public teamAddress;
@@ -109,7 +109,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         uint256 indexed pid,
         uint256 lastRewardTimestamp,
         uint256 lpSupply,
-        uint256 accAlbPerShare
+        uint256 accBasedPerShare
     );
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -162,8 +162,8 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
     event SetInvestorPercent(uint256 oldPercent, uint256 newPercent);
 
     constructor(
-        IBoringERC20 _alb,
-        uint256 _albPerSec,
+        IBoringERC20 _based,
+        uint256 _basedPerSec,
         address _teamAddress,
         address _treasuryAddress,
         address _investorAddress,
@@ -191,8 +191,8 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
         startTimestamp = block.timestamp + (60 * 60 * 24 * 365);
 
-        alb = _alb;
-        albPerSec = _albPerSec;
+        based = _based;
+        basedPerSec = _basedPerSec;
 
         teamAddress = _teamAddress;
         treasuryAddress = _treasuryAddress;
@@ -270,7 +270,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
                 lpToken: _lpToken,
                 allocPoint: _allocPoint,
                 lastRewardTimestamp: lastRewardTimestamp,
-                accAlbPerShare: 0,
+                accBasedPerShare: 0,
                 depositFeeBP: _depositFeeBP,
                 harvestInterval: _harvestInterval,
                 totalLp: 0,
@@ -288,7 +288,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         );
     }
 
-    // Update the given pool's Alb allocation point and deposit fee. Can only be called by the owner.
+    // Update the given pool's Based allocation point and deposit fee. Can only be called by the owner.
     function set(
         uint256 _pid,
         uint256 _allocPoint,
@@ -353,7 +353,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
     {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accAlbPerShare = pool.accAlbPerShare;
+        uint256 accBasedPerShare = pool.accBasedPerShare;
         uint256 lpSupply = pool.totalLp;
 
         if (block.timestamp > pool.lastRewardTimestamp && lpSupply != 0) {
@@ -364,19 +364,19 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
                 treasuryPercent -
                 investorPercent;
 
-            uint256 albReward = (multiplier *
-                albPerSec *
+            uint256 basedReward = (multiplier *
+                basedPerSec *
                 pool.allocPoint *
                 lpPercent) /
                 totalAllocPoint /
                 total;
 
-            accAlbPerShare += (
-                ((albReward * ACC_TOKEN_PRECISION) / lpSupply)
+            accBasedPerShare += (
+                ((basedReward * ACC_TOKEN_PRECISION) / lpSupply)
             );
         }
 
-        uint256 pendingAlb = (((user.amount * accAlbPerShare) /
+        uint256 pendingBased = (((user.amount * accBasedPerShare) /
             ACC_TOKEN_PRECISION) - user.rewardDebt) + user.rewardLockedUp;
 
         addresses = new address[](pool.rewarders.length + 1);
@@ -384,10 +384,10 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         amounts = new uint256[](pool.rewarders.length + 1);
         decimals = new uint256[](pool.rewarders.length + 1);
 
-        addresses[0] = address(alb);
-        symbols[0] = IBoringERC20(alb).safeSymbol();
-        decimals[0] = IBoringERC20(alb).safeDecimals();
-        amounts[0] = pendingAlb;
+        addresses[0] = address(based);
+        symbols[0] = IBoringERC20(based).safeSymbol();
+        decimals[0] = IBoringERC20(based).safeDecimals();
+        amounts[0] = pendingBased;
 
         for (
             uint256 rewarderId = 0;
@@ -432,9 +432,9 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         decimals = new uint256[](pool.rewarders.length + 1);
         rewardsPerSec = new uint256[](pool.rewarders.length + 1);
 
-        addresses[0] = address(alb);
-        symbols[0] = IBoringERC20(alb).safeSymbol();
-        decimals[0] = IBoringERC20(alb).safeDecimals();
+        addresses[0] = address(based);
+        symbols[0] = IBoringERC20(based).safeSymbol();
+        decimals[0] = IBoringERC20(based).safeDecimals();
 
         uint256 total = 1000;
         uint256 lpPercent = total -
@@ -443,7 +443,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
             investorPercent;
 
         rewardsPerSec[0] =
-            (pool.allocPoint * albPerSec * lpPercent) /
+            (pool.allocPoint * basedPerSec * lpPercent) /
             totalAllocPoint /
             total;
 
@@ -488,7 +488,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         }
     }
 
-    // View function to see if user can harvest Alb.
+    // View function to see if user can harvest Based.
     function canHarvest(uint256 _pid, address _user)
         public
         view
@@ -535,7 +535,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
 
         uint256 multiplier = block.timestamp - pool.lastRewardTimestamp;
 
-        uint256 albReward = ((multiplier * albPerSec) * pool.allocPoint) /
+        uint256 basedReward = ((multiplier * basedPerSec) * pool.allocPoint) /
             totalAllocPoint;
 
         uint256 total = 1000;
@@ -544,13 +544,13 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
             treasuryPercent -
             investorPercent;
 
-        alb.mint(teamAddress, (albReward * teamPercent) / total);
-        alb.mint(treasuryAddress, (albReward * treasuryPercent) / total);
-        alb.mint(investorAddress, (albReward * investorPercent) / total);
-        alb.mint(address(this), (albReward * lpPercent) / total);
+        based.mint(teamAddress, (basedReward * teamPercent) / total);
+        based.mint(treasuryAddress, (basedReward * treasuryPercent) / total);
+        based.mint(investorAddress, (basedReward * investorPercent) / total);
+        based.mint(address(this), (basedReward * lpPercent) / total);
 
-        pool.accAlbPerShare +=
-            (albReward * ACC_TOKEN_PRECISION * lpPercent) /
+        pool.accBasedPerShare +=
+            (basedReward * ACC_TOKEN_PRECISION * lpPercent) /
             pool.totalLp /
             total;
 
@@ -560,7 +560,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
             _pid,
             pool.lastRewardTimestamp,
             lpSupply,
-            pool.accAlbPerShare
+            pool.accBasedPerShare
         );
     }
 
@@ -578,12 +578,12 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         _deposit(pid, amount);
     }
 
-    // Deposit tokens for Alb allocation.
+    // Deposit tokens for Based allocation.
     function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         _deposit(_pid, _amount);
     }
 
-    // Deposit tokens for Alb allocation.
+    // Deposit tokens for Based allocation.
     function _deposit(uint256 _pid, uint256 _amount)
         internal
         validatePoolByPid(_pid)
@@ -593,7 +593,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
 
         _updatePool(_pid);
 
-        payOrLockupPendingAlb(_pid);
+        payOrLockupPendingBased(_pid);
 
         if (_amount > 0) {
             uint256 beforeDeposit = pool.lpToken.balanceOf(address(this));
@@ -611,12 +611,12 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
 
             user.amount += _amount;
 
-            if (address(pool.lpToken) == address(alb)) {
-                totalAlbInPools += _amount;
+            if (address(pool.lpToken) == address(based)) {
+                totalBasedInPools += _amount;
             }
         }
         user.rewardDebt =
-            (user.amount * pool.accAlbPerShare) /
+            (user.amount * pool.accBasedPerShare) /
             ACC_TOKEN_PRECISION;
 
         for (
@@ -655,18 +655,18 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
 
         _updatePool(_pid);
 
-        payOrLockupPendingAlb(_pid);
+        payOrLockupPendingBased(_pid);
 
         if (_amount > 0) {
             user.amount -= _amount;
-            if (address(pool.lpToken) == address(alb)) {
-                totalAlbInPools -= _amount;
+            if (address(pool.lpToken) == address(based)) {
+                totalBasedInPools -= _amount;
             }
             pool.lpToken.safeTransfer(msg.sender, _amount);
         }
 
         user.rewardDebt =
-            (user.amount * pool.accAlbPerShare) /
+            (user.amount * pool.accBasedPerShare) /
             ACC_TOKEN_PRECISION;
 
         for (
@@ -714,8 +714,8 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
             pool.rewarders[rewarderId].onBasedReward(_pid, msg.sender, 0);
         }
 
-        if (address(pool.lpToken) == address(alb)) {
-            totalAlbInPools -= amount;
+        if (address(pool.lpToken) == address(based)) {
+            totalBasedInPools -= amount;
         }
 
         pool.lpToken.safeTransfer(msg.sender, amount);
@@ -723,8 +723,8 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, _pid, amount);
     }
 
-    // Pay or lockup pending Alb.
-    function payOrLockupPendingAlb(uint256 _pid) internal {
+    // Pay or lockup pending Based.
+    function payOrLockupPendingBased(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
 
@@ -732,7 +732,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
             user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
         }
 
-        uint256 pending = ((user.amount * pool.accAlbPerShare) /
+        uint256 pending = ((user.amount * pool.accBasedPerShare) /
             ACC_TOKEN_PRECISION) - user.rewardDebt;
 
         if (canHarvest(_pid, msg.sender)) {
@@ -745,7 +745,7 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
                 user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
 
                 // send rewards
-                safeAlbTransfer(msg.sender, pendingRewards);
+                safeBasedTransfer(msg.sender, pendingRewards);
             }
         } else if (pending > 0) {
             totalLockedUpRewards += pending;
@@ -754,26 +754,26 @@ contract BasedDistributorV2 is Ownable, ReentrancyGuard {
         }
     }
 
-    // Safe Alb transfer function, just in case if rounding error causes pool do not have enough Alb.
-    function safeAlbTransfer(address _to, uint256 _amount) internal {
-        if (alb.balanceOf(address(this)) > totalAlbInPools) {
-            //albBal = total Alb in BasedDistributor - total Alb in Alb pools, this will make sure that BasedDistributor never transfer rewards from deposited Alb pools
-            uint256 albBal = alb.balanceOf(address(this)) -
-                totalAlbInPools;
-            if (_amount >= albBal) {
-                alb.safeTransfer(_to, albBal);
+    // Safe Based transfer function, just in case if rounding error causes pool do not have enough Based.
+    function safeBasedTransfer(address _to, uint256 _amount) internal {
+        if (based.balanceOf(address(this)) > totalBasedInPools) {
+            //basedBal = total Based in BasedDistributor - total Based in Based pools, this will make sure that BasedDistributor never transfer rewards from deposited Based pools
+            uint256 basedBal = based.balanceOf(address(this)) -
+                totalBasedInPools;
+            if (_amount >= basedBal) {
+                based.safeTransfer(_to, basedBal);
             } else if (_amount > 0) {
-                alb.safeTransfer(_to, _amount);
+                based.safeTransfer(_to, _amount);
             }
         }
     }
 
-    function updateEmissionRate(uint256 _albPerSec) public onlyOwner {
+    function updateEmissionRate(uint256 _basedPerSec) public onlyOwner {
         _massUpdatePools();
 
-        emit EmissionRateUpdated(msg.sender, albPerSec, _albPerSec);
+        emit EmissionRateUpdated(msg.sender, basedPerSec, _basedPerSec);
 
-        albPerSec = _albPerSec;
+        basedPerSec = _basedPerSec;
     }
 
     function updateAllocPoint(uint256 _pid, uint256 _allocPoint)

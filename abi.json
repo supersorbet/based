@@ -3,12 +3,12 @@
         "type": "constructor",
         "inputs": [
             {
-                "name": "_alb",
+                "name": "_based",
                 "type": "address",
                 "internalType": "contract IBoringERC20"
             },
             {
-                "name": "_albPerSec",
+                "name": "_basedPerSec",
                 "type": "uint256",
                 "internalType": "uint256"
             },
@@ -406,7 +406,7 @@
                 "internalType": "uint256"
             },
             {
-                "name": "accAlbPerShare",
+                "name": "accBasedPerShare",
                 "type": "uint256",
                 "indexed": false,
                 "internalType": "uint256"
@@ -499,7 +499,7 @@
         "stateMutability": "nonpayable"
     },
     {
-        "name": "alb",
+        "name": "based",
         "type": "function",
         "inputs": [],
         "outputs": [
@@ -512,7 +512,7 @@
         "stateMutability": "view"
     },
     {
-        "name": "albPerSec",
+        "name": "basedPerSec",
         "type": "function",
         "inputs": [],
         "outputs": [
@@ -742,7 +742,7 @@
                 "internalType": "uint256"
             },
             {
-                "name": "accAlbPerShare",
+                "name": "accBasedPerShare",
                 "type": "uint256",
                 "internalType": "uint256"
             },
@@ -1014,7 +1014,7 @@
         "stateMutability": "view"
     },
     {
-        "name": "totalAlbInPools",
+        "name": "totalBasedInPools",
         "type": "function",
         "inputs": [],
         "outputs": [
@@ -1114,7 +1114,7 @@
         "type": "function",
         "inputs": [
             {
-                "name": "_albPerSec",
+                "name": "_basedPerSec",
                 "type": "uint256",
                 "internalType": "uint256"
             }
